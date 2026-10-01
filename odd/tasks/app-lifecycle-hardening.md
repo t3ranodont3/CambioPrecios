@@ -89,8 +89,10 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Additional checks:** `flutter test --no-pub` — all 15 tests passed; `flutter analyze --no-pub` — no issues; `dart format lib/main.dart lib/src/providers/auth_provider.dart lib/src/screens/login_screen.dart lib/src/screens/home_screen.dart test/auth_routing_test.dart` — formatted 4 files (formatting-only changes to `home_screen.dart` are included in the diff); final rerun `flutter analyze --no-pub` — no issues; `flutter test --no-pub` — all 15 tests passed.
   - **Runtime harness:** widget tests in `test/auth_routing_test.dart` exercised route guard redirect, authenticated stay, login flow, and logout flow; no device/app launch was run.
   - **Authored change count:** +188 / -28 lines (216 authored changed lines for ALH-03 implementation and regression tests). Note: `dart format` applied formatting-only whitespace changes to `lib/src/screens/home_screen.dart` that are included in the diff total.
-  - **Commit identity:** pending — parent-owned work-unit commit.
-  - **RDD assessment:** pending — parent-owned commit and native assessment.
+  - **Commit identity:** `66f8aa3` — `fix(auth): protect routes and centralize auth state`.
+  - **Commit stats:** +226 / -39 = 265 authored changed lines.
+  - **RDD assessment:** mode on; native assessment against base `2d6ca52` returned risk `high`, `review_due: true`, reason `high_risk`, and `changed_lines: 265`.
+  - **Native review resolution:** `gentle-ai.review-acknowledged/v1`; action `acknowledged`; authority `burned`; lineage `review-e9bfab7d1dadce2b`; target `sha256:c1055eaaa31ab922d0f3f78896f28e28ac1d335d0cc5e1b596a0b88038ad88e0`. The review completed with 11 advisory findings (WARNING/SUGGESTION), all informational; no blockers or criticals. Review is terminal.
 
 - [ ] **ALH-04 — Restore local state on app resume, never auto-sync.**
   - **Execution order:** After ALH-03; ALH-05 follows.
@@ -125,8 +127,8 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 ## Forecast and slice plan
 
 - **Original forecast:** 650–850 authored lines across implementation and regression tests; this estimate has been exceeded.
-- **Running count through ALH-03:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines. ALH-02 commit `2d6ca52` is +438 / -280 = 718 authored lines. ALH-03 (pending commit) is +188 / -28 = 216 authored lines. Cumulative work-unit commits total +835 / -337 = **1,172 authored lines**.
-- **ALH-03 estimate:** approximately 200–350 authored lines; ALH-03 is complete at 216 authored lines (within estimate).
+- **Running count through ALH-03:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines. ALH-02 commit `2d6ca52` is +438 / -280 = 718 authored lines. ALH-03 commit `66f8aa3` is +226 / -39 = 265 authored lines. Cumulative work-unit commits total +873 / -348 = **1,221 authored lines**.
+- **ALH-03 estimate:** approximately 200–350 authored lines; ALH-03 is complete at 265 authored lines (within estimate).
 - **Remaining forecast (ALH-04 through ALH-05):** approximately 150–250 for local-only resume handling and 300–500 for Web-compatible file flows; total approximately **450–750 authored lines**, excluding future task-document deltas. Revisit at each task boundary.
 - The cumulative committed work exceeds the 400-line advisory threshold and the original feature forecast. `stacked-to-main` still describes the intended order only; parent/user decisions are required for any push, PR creation, merge, or further delivery slicing.
 - **~400-line heuristic:** **Exceeds** the advisory threshold. Keep the work split into the following ordered slices/PRs.
@@ -138,5 +140,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 (`5a73874`) and ALH-02 (`2d6ca52`) are complete and their cumulative review is terminally acknowledged. ALH-03 is complete (pending parent-owned commit). The user has authorized ALH-04 as the next task; ALH-05 follows.
-- **Next:** parent commits ALH-03 work unit, then implement ALH-04, then ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
+- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), and ALH-03 (`66f8aa3`) are complete and their cumulative review is terminally acknowledged. The user has authorized ALH-04 as the next task; ALH-05 follows.
+- **Next:** implement ALH-04, then ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
