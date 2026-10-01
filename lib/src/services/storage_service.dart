@@ -29,40 +29,27 @@ Future<List<int>> _getOrCreateHiveKey() async {
 }
 
 Future<void> initStorage() async {
-  try {
-    await Hive.initFlutter();
+  await Hive.initFlutter();
 
-    final prefs = await SharedPreferences.getInstance();
-    _currentUsername = prefs.getString('username');
+  final prefs = await SharedPreferences.getInstance();
+  _currentUsername = prefs.getString('username');
 
-    if (_currentUsername == null || _currentUsername!.isEmpty) {
-      _currentUsername = 'default';
-    }
-
-    _encryptionKey = await _getOrCreateHiveKey();
-
-    await _openOrCreateBox(productsBoxName);
-    await _openOrCreateBox(reportsBoxName);
-    await _openOrCreateBox(configBoxName);
-  } catch (e) {
-    debugPrint('Error initializing Hive: $e');
+  if (_currentUsername == null || _currentUsername!.isEmpty) {
+    _currentUsername = 'default';
   }
+
+  _encryptionKey = await _getOrCreateHiveKey();
+
+  await _openOrCreateBox(productsBoxName);
+  await _openOrCreateBox(reportsBoxName);
+  await _openOrCreateBox(configBoxName);
 }
 
 Future<Box> _openOrCreateBox(String boxName) async {
-  try {
-    return await Hive.openBox(
-      boxName,
-      encryptionCipher: HiveAesCipher(_encryptionKey!),
-    );
-  } catch (e) {
-    debugPrint('Error: Incompatible encryption for $boxName. Recreating...');
-    await Hive.deleteBoxFromDisk(boxName);
-    return await Hive.openBox(
-      boxName,
-      encryptionCipher: HiveAesCipher(_encryptionKey!),
-    );
-  }
+  return Hive.openBox(
+    boxName,
+    encryptionCipher: HiveAesCipher(_encryptionKey!),
+  );
 }
 
 String get productsBoxName => 'products_$currentUsername';

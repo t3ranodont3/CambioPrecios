@@ -13,8 +13,20 @@ import 'src/screens/sync_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initStorage();
-  runApp(const MyApp());
+  runApp(await createStartupApp());
+}
+
+Future<Widget> createStartupApp({
+  Future<void> Function() initializeStorage = initStorage,
+}) async {
+  try {
+    await initializeStorage();
+    return const MyApp();
+  } catch (error, stackTrace) {
+    debugPrint('Storage initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    return const StorageStartupFailureApp();
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -42,6 +54,31 @@ class MyApp extends StatelessWidget {
           '/export': (c) => const ExportCsvScreen(),
           '/sync': (c) => const SyncScreen(),
         },
+      ),
+    );
+  }
+}
+
+class StorageStartupFailureApp extends StatelessWidget {
+  const StorageStartupFailureApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CambioPrecios DIGEMID',
+      home: Scaffold(
+        appBar: AppBar(title: const Text('No se pudo iniciar la aplicación')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No se pudo inicializar el almacenamiento local. '
+              'La aplicación no se inició y los datos existentes no se '
+              'restablecieron. Reinicie la aplicación o contacte al soporte.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       ),
     );
   }
