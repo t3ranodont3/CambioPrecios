@@ -5,7 +5,7 @@ import '../services/storage_service.dart';
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
   String _username = '';
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   bool get isLoggedIn => _isLoggedIn;
   String get username => _username;
@@ -16,9 +16,6 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _checkInitialAuth() async {
-    _isLoading = true;
-    notifyListeners();
-
     try {
       final username = await AuthService.getStoredUsername();
       if (username != null && username.isNotEmpty) {

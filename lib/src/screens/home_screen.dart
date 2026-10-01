@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -38,13 +39,20 @@ class _HomeScreenState extends State<HomeScreen> {
             side: BorderSide(color: Colors.orange.shade300, width: 1.2),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 14.0,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 22),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange.shade700,
+                      size: 22,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -72,7 +80,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.shade600,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: () => _promptEstablishmentInfo(),
                   ),
@@ -118,7 +128,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               TextField(
                 controller: rucCtrl,
-                decoration: const InputDecoration(labelText: 'RUC', counterText: ''),
+                decoration: const InputDecoration(
+                  labelText: 'RUC',
+                  counterText: '',
+                ),
                 keyboardType: TextInputType.number,
                 maxLength: 11,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -139,10 +152,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 final name = nameCtrl.text.trim();
                 final ruc = rucCtrl.text.trim();
                 final code = codeCtrl.text.trim();
-                
+
                 if (ruc.length != 11) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('El RUC debe tener exactamente 11 dígitos numéricos.')),
+                    const SnackBar(
+                      content: Text(
+                        'El RUC debe tener exactamente 11 dígitos numéricos.',
+                      ),
+                    ),
                   );
                   return;
                 }
@@ -232,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               final nav = Navigator.of(context);
-              await AuthService.logout();
+              await context.read<AuthProvider>().logout();
               nav.pushReplacementNamed('/login');
             },
           ),

@@ -29,6 +29,33 @@ Future<Widget> createStartupApp({
   }
 }
 
+class AuthGuard extends StatelessWidget {
+  final Widget child;
+  const AuthGuard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!auth.isLoggedIn) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed('/login');
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return child;
+      },
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -47,12 +74,13 @@ class MyApp extends StatelessWidget {
         initialRoute: '/login',
         routes: {
           '/login': (c) => const LoginScreen(),
-          '/home': (c) => const HomeScreen(),
-          '/import_catalog': (c) => const ImportCatalogScreen(),
-          '/import_report': (c) => const ImportReportScreen(),
-          '/edit': (c) => const EditScreen(),
-          '/export': (c) => const ExportCsvScreen(),
-          '/sync': (c) => const SyncScreen(),
+          '/home': (c) => const AuthGuard(child: HomeScreen()),
+          '/import_catalog': (c) =>
+              const AuthGuard(child: ImportCatalogScreen()),
+          '/import_report': (c) => const AuthGuard(child: ImportReportScreen()),
+          '/edit': (c) => const AuthGuard(child: EditScreen()),
+          '/export': (c) => const AuthGuard(child: ExportCsvScreen()),
+          '/sync': (c) => const AuthGuard(child: SyncScreen()),
         },
       ),
     );

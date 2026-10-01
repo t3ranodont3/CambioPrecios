@@ -14,7 +14,7 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 - On app resume, restore/re-read local persisted state only. DIGEMID synchronization remains a deliberate **manual user action**; resume must not initiate remote calls.
 - Keep existing user data and current credential/product behavior. Do not broaden this work into a new login, account creation, or credential policy.
 - Web is in scope: `GUIDE.md` lists Windows, Android, and Web, and app-routed code includes direct `dart:io` references.
-- The planning-only restriction above applied to the initial planning phase and is now historical: the user selected `stacked-to-main` and authorized ALH-01 and ALH-02 implementation. ALH-01 is recorded in commit `5a73874`; ALH-02 is the current uncommitted work unit. No configuration or other documentation is included in these app changes. Push, PR creation, and merge remain separate user decisions.
+- The planning-only restriction above applied to the initial planning phase and is now historical: the user selected `stacked-to-main` and authorized ALH-01 and ALH-02. ALH-01 is recorded in commit `5a73874`; ALH-02 is recorded in commit `2d6ca52`. The user has now authorized ALH-03 as the next task; ALH-04 and ALH-05 follow in order. The current uncommitted `analysis_options.yaml` and `pubspec.lock` changes are user-owned and must be preserved and excluded from future commits. Push, PR creation, and merge remain separate user decisions.
 
 ## Constraints and unresolved decisions
 
@@ -32,6 +32,7 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 ## Delivery strategy
 
 - **Chain strategy:** **Apiladas a main** (`stacked-to-main`), as selected by the user.
+- **Execution order update:** per the user's latest direction, perform ALH-03, then ALH-04, then ALH-05. The earlier deferral of ALH-03 is superseded by the user's explicit re-authorization.
 - Implement the proposed slices as ordered work units. If PR creation and merging are separately authorized, stack them and merge each to `main` in the order listed below before merging the next one.
 - The chain strategy records the intended order only; it does **not** authorize push, PR creation, or merge. Push, PR creation, and merge remain user decisions. No PR will be created or merged here.
 - Create local work-unit commits on the current feature branch as authorized ODD behavior; this does not authorize pushing those commits.
@@ -47,13 +48,14 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Done when:** tests prove startup cannot present the normal app as ready after required storage initialization fails; the failure is observable through a safe startup/error path and does not silently continue with partially initialized storage.
   - **Outcome:** `initStorage()` now propagates failures; `main()` launches either the normal app after successful initialization or a standalone visible startup-failure screen. The storage service's startup box opener no longer deletes/recreates a box after an open failure, so unsafe or incompatible data remains blocked and the error propagates. Other independent Hive-opening paths remain in ALH-02 scope.
   - **Changed files:** `lib/main.dart`, `lib/src/services/storage_service.dart`, `test/storage_startup_test.dart`.
-  - **TDD evidence:** RED — `$env:PUB_OFFLINE = 'true'; flutter test test/storage_startup_test.dart; $env:PUB_OFFLINE = $null` failed as expected because `initStorage()` swallowed the injected path-provider `PlatformException`. GREEN — `flutter test --no-pub test/storage_startup_test.dart` passed (2 tests); `flutter test --no-pub` passed (8 tests).
+  - **TDD evidence:** RED — `flutter test test/storage_startup_test.dart` failed as expected because `initStorage()` swallowed the injected path-provider `PlatformException`. GREEN — `flutter test --no-pub test/storage_startup_test.dart` passed (2 tests); `flutter test --no-pub` passed (8 tests).
   - **Additional checks:** `flutter analyze --no-pub` — no issues; `dart format lib/main.dart lib/src/services/storage_service.dart test/storage_startup_test.dart` — final run formatted 0 files.
   - **Runtime harness:** widget test in `test/storage_startup_test.dart` exercised the failed-startup UI and verified the login route was absent; no device/app launch was run.
   - **Authored change count:** +97 / -29 lines (126 authored changed lines for ALH-01 implementation and regression tests).
   - **Commit identity:** `5a73874` — `fix(storage): fail safely during app startup`.
+  - **Commit stats:** +209 / -29 = 238 authored changed lines.
   - **RDD assessment:** mode on; native assessment against base `81d48f901270a59e93fc06f8dc248e8833cb273e` returned risk `medium`, `review_due: false`, reason `under_budget`, and `changed_lines: 238` (commit assessment includes the task document).
-  - **Boundary status:** this slice remains pending review until a future commit reaches the delivery budget; the current assessment did not make review due.
+  - **Boundary status:** the per-commit assessment was under budget and did not make review due; the later cumulative review resolution is recorded below.
 
 - [x] **ALH-02 — Unify Hive access and make recovery non-destructive.**
   - **Implementation route:** `delegated`.
@@ -66,18 +68,32 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **TDD evidence:** RED — `flutter test --no-pub test/storage_box_policy_test.dart` initially showed helper opens used plaintext (returned a box where encrypted open should fail) and missing keys were generated despite existing data. GREEN — `flutter test --no-pub test/storage_box_policy_test.dart` passed (3 tests), proving encrypted persistence/idempotent open, unchanged bytes after cipher mismatch, and no replacement key/data loss when a key is missing.
   - **Additional checks:** `flutter test --no-pub` — all 11 tests passed; `flutter analyze --no-pub` — no issues; `dart format lib/src/services/storage_service.dart lib/src/services/hive_helper.dart lib/src/screens/import_catalog_screen.dart lib/src/screens/import_report_screen.dart lib/src/screens/export_csv_screen.dart lib/src/screens/sync_screen.dart lib/src/screens/edit_screen.dart lib/src/widgets/catalog_search_dialog.dart lib/src/utils/price_utils.dart test/storage_box_policy_test.dart` — final run formatted 0 files.
   - **Runtime harness:** Hive storage tests use temporary directories and mocked secure storage; no app/device launch or DIGEMID sync was run.
-  - **Authored change count:** +420 / -273 lines (693 implementation and regression-test lines, including Dart formatter changes).
-  - **Commit identity:** pending parent-owned local work-unit commit; no commit created here.
-  - **RDD boundary:** mode on; this writer did not run a native assessment. The current reviewed boundary remains `81d48f901270a59e93fc06f8dc248e8833cb273e`, pending the parent-owned next assessment. No push, PR, or merge was performed.
+  - **Commit identity:** `2d6ca52` — `fix(storage): unify encrypted Hive access`.
+  - **Commit stats:** +438 / -280 = 718 authored changed lines.
+  - **Cumulative RDD assessment:** mode on; assessment of the committed range from base `81d48f901270a59e93fc06f8dc248e8833cb273e` returned risk `medium`, `review_due: true`, reason `slice_budget_reached`, and native `changed_lines: 926`. This native metric is distinct from the authored add/delete total.
+  - **Native review resolution:** `gentle-ai.review-acknowledged/v1`; action `acknowledged`; authority `burned`; lineage `review-73a014fbf928928b`; target `sha256:484e9595ea588af6e6976a94029c06c995ccc10a87b117ff503778b085cafdf5`. The final admitted `review-reliability` capture had no findings; review is terminal. This records no delivery authority.
+  - **Public follow-up:** one sanitized occurrence comment was posted to canonical open issue [#5094](https://github.com/Gentleman-Programming/gentle-ai/issues/5094#issuecomment-5938052424). No labels changed. The same observable defect was found in 3.7.0; no verified published fix was found.
+  - **User-reported smoke test:** an emulator build/install/run succeeded and catalog import stored 18,265 items before device connection was lost. The requested physical target was unavailable and only an emulator was present. Flutter warned that Gradle 8.14, AGP 8.11.1, and Kotlin 2.2.20 support will be dropped in a future release. Preserve the user-owned uncommitted `analysis_options.yaml` and `pubspec.lock` modifications; do not stage, revert, or include them in future commits.
+  - **RDD boundary:** the cumulative reviewed boundary is the range from `81d48f901270a59e93fc06f8dc248e8833cb273e` through `2d6ca52`; native review is terminally acknowledged. No push, PR, or merge was performed.
 
-- [ ] **ALH-03 — Make authentication state and protected navigation consistent.**
+- [x] **ALH-03 — Make authentication state and protected navigation consistent.**
   - **Implementation route:** `delegated`.
   - **Task routing trigger:** multi-file, non-trivial writer; preparation requires reading across 4+ files.
-  - **Route:** `lib/main.dart`, `lib/src/providers/auth_provider.dart`, `lib/src/providers/establishment_provider.dart`, `lib/src/services/auth_service.dart`, `lib/src/screens/login_screen.dart`; auth/routing tests under `test/`.
-  - **Trigger evidence:** both providers are only registered in `main.dart`, with no consumers found; `LoginScreen` calls `AuthService` directly; app startup always selects `/login` and named routes have no auth gate, despite `AuthProvider` loading a stored username.
+  - **Route:** `lib/main.dart`, `lib/src/providers/auth_provider.dart`, `lib/src/providers/establishment_provider.dart`, `lib/src/services/auth_service.dart`, `lib/src/screens/login_screen.dart`, `lib/src/screens/home_screen.dart`; auth/routing tests under `test/`.
+  - **Trigger evidence:** both providers are only registered in `main.dart`, with no consumers found; `LoginScreen` calls `AuthService` directly; `HomeScreen` calls `AuthService.logout()` directly; app startup always selects `/login` and named routes have no auth gate, despite `AuthProvider` loading a stored username.
   - **Done when:** tests cover loading/restoring the existing session, successful login/logout state transitions, and blocking unauthenticated access to protected app routes; routing and displayed auth state use one consistent source of truth without changing credential/account policy.
+  - **Outcome:** `AuthProvider` is the single in-memory auth state source. `LoginScreen` uses `auth.login()` instead of `AuthService.login()` directly. `HomeScreen` uses `auth.logout()` instead of `AuthService.logout()` directly. A new `AuthGuard` widget wraps all protected routes (`/home`, `/import_catalog`, `/import_report`, `/edit`, `/export`, `/sync`); `/login` remains public. The guard shows a loading indicator while `AuthProvider._checkInitialAuth` resolves, then redirects to `/login` if not authenticated. `AuthProvider._isLoading` starts as `true` so the guard waits for the initial auth check before redirecting, preventing a false redirect when stored credentials exist. Credential/account semantics are unchanged; `EstablishmentProvider` was not modified.
+  - **Scope decision:** `EstablishmentProvider` was not modified — no auth/routing flow required it for this task.
+  - **Changed files:** `lib/main.dart`, `lib/src/providers/auth_provider.dart`, `lib/src/screens/login_screen.dart`, `lib/src/screens/home_screen.dart`, `test/auth_routing_test.dart`.
+  - **TDD evidence:** RED — `flutter test --no-pub test/auth_routing_test.dart` failed as expected: unauthenticated redirect to `/login` was not implemented, authenticated stay on `/home` was not gated, login flow bypassed `AuthProvider`, and logout flow bypassed `AuthProvider`. GREEN — `flutter test --no-pub test/auth_routing_test.dart` passed (4 tests). The "Error switching user" messages in test output are expected: `switchUser` fails silently because Hive is not initialized in the test environment, but auth state is updated before navigation.
+  - **Additional checks:** `flutter test --no-pub` — all 15 tests passed; `flutter analyze --no-pub` — no issues; `dart format lib/main.dart lib/src/providers/auth_provider.dart lib/src/screens/login_screen.dart lib/src/screens/home_screen.dart test/auth_routing_test.dart` — formatted 4 files (formatting-only changes to `home_screen.dart` are included in the diff); final rerun `flutter analyze --no-pub` — no issues; `flutter test --no-pub` — all 15 tests passed.
+  - **Runtime harness:** widget tests in `test/auth_routing_test.dart` exercised route guard redirect, authenticated stay, login flow, and logout flow; no device/app launch was run.
+  - **Authored change count:** +188 / -28 lines (216 authored changed lines for ALH-03 implementation and regression tests). Note: `dart format` applied formatting-only whitespace changes to `lib/src/screens/home_screen.dart` that are included in the diff total.
+  - **Commit identity:** pending — parent-owned work-unit commit.
+  - **RDD assessment:** pending — parent-owned commit and native assessment.
 
 - [ ] **ALH-04 — Restore local state on app resume, never auto-sync.**
+  - **Execution order:** After ALH-03; ALH-05 follows.
   - **Implementation route:** `delegated`.
   - **Task routing trigger:** multi-file, non-trivial writer; preparation requires reading across 4+ files.
   - **Route:** app lifecycle/root coordination in `lib/main.dart` and the relevant local-state providers/services; lifecycle/widget tests under `test/`.
@@ -85,6 +101,7 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Done when:** a simulated resume refreshes/restores needed local persisted state for the active app and is covered by a regression test; a test or injected boundary proves resume does not call DIGEMID/network operations. The existing Sync screen actions remain manual.
 
 - [ ] **ALH-05 — Remove Web-incompatible I/O from app-routed flows.**
+  - **Execution order:** After ALH-04.
   - **Implementation route:** `delegated`.
   - **Task routing trigger:** multi-file, non-trivial writer; preparation requires reading across 4+ files.
   - **Route:** `lib/src/screens/import_catalog_screen.dart`, `lib/src/screens/import_report_screen.dart`, `lib/src/screens/edit_screen.dart`, and focused platform/file tests under `test/`.
@@ -107,9 +124,11 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Forecast and slice plan
 
-- **Forecast:** approximately **650–850 authored lines (additions + deletions)** across implementation and regression tests. This is an estimate, not a measured diff; the platform adapters and lifecycle/auth coverage are the main uncertainty.
-- **Running count through ALH-02:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines, including its task-document additions. ALH-02 implementation/tests add +420 / -273 = 693 lines; this task-document update adds +12 / -3. Cumulative known work is +641 / -305 = **946 authored lines**.
-- The original 650–850 implementation/test forecast has been nearly consumed by ALH-01 and ALH-02 alone (819 source/test lines to date); re-estimate ALH-03–ALH-05 before proceeding rather than using the earlier 524–724 remaining estimate. Including this documentation, ALH-02 is +432 / -276 = 708 lines and exceeds the 400-line advisory threshold; parent owns the next delivery-boundary assessment and any slicing decision.
+- **Original forecast:** 650–850 authored lines across implementation and regression tests; this estimate has been exceeded.
+- **Running count through ALH-03:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines. ALH-02 commit `2d6ca52` is +438 / -280 = 718 authored lines. ALH-03 (pending commit) is +188 / -28 = 216 authored lines. Cumulative work-unit commits total +835 / -337 = **1,172 authored lines**.
+- **ALH-03 estimate:** approximately 200–350 authored lines; ALH-03 is complete at 216 authored lines (within estimate).
+- **Remaining forecast (ALH-04 through ALH-05):** approximately 150–250 for local-only resume handling and 300–500 for Web-compatible file flows; total approximately **450–750 authored lines**, excluding future task-document deltas. Revisit at each task boundary.
+- The cumulative committed work exceeds the 400-line advisory threshold and the original feature forecast. `stacked-to-main` still describes the intended order only; parent/user decisions are required for any push, PR creation, merge, or further delivery slicing.
 - **~400-line heuristic:** **Exceeds** the advisory threshold. Keep the work split into the following ordered slices/PRs.
 - **Review slices (intended stack/merge order, contingent on separate user authorization for PR creation and merge):**
   1. Startup gate + non-destructive unified Hive access and storage tests (`fix(storage): fail safely during app startup`).
@@ -119,5 +138,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 is committed as `5a73874` and remains pending review under its medium/under-budget assessment. ALH-02 implementation and regression tests are complete and passing; its work-unit commit and native assessment remain parent-owned. No ALH-03 or later work has started.
-- **Next:** ALH-03 only, after the parent-owned ALH-02 work-unit commit and next RDD assessment against the current reviewed boundary. Preserve user data and manual-only DIGEMID synchronization; push, PR creation, and merge remain separate user decisions. No PR was created or merged here.
+- **Progress:** ALH-01 (`5a73874`) and ALH-02 (`2d6ca52`) are complete and their cumulative review is terminally acknowledged. ALH-03 is complete (pending parent-owned commit). The user has authorized ALH-04 as the next task; ALH-05 follows.
+- **Next:** parent commits ALH-03 work unit, then implement ALH-04, then ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
