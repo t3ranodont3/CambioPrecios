@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import '../services/hive_helper.dart';
 import '../services/storage_service.dart';
 
 Future<double> validateUnitPrice({
@@ -48,12 +48,7 @@ Future<double> validateUnitPrice({
 
 String? lookupFraccion(String codProd) {
   try {
-    Box box;
-    try {
-      box = Hive.box(productsBoxName);
-    } catch (_) {
-      box = Hive.box('products');
-    }
+    final box = HiveHelper.box(productsBoxName);
     for (final item in box.values) {
       if (item is Map) {
         final code = item['Cod_Prod']?.toString() ?? '';

@@ -1,34 +1,20 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'storage_service.dart';
 
 class HiveHelper {
   HiveHelper._();
 
-  static Future<Box<T>> openBox<T>(String name) async {
-    if (Hive.isBoxOpen(name)) {
-      return Hive.box<T>(name);
-    }
-    try {
-      return await Hive.openBox<T>(name);
-    } catch (e) {
-      debugPrint('Error opening box $name, recreating: $e');
-      await Hive.deleteBoxFromDisk(name);
-      return await Hive.openBox<T>(name);
-    }
-  }
+  static Future<Box> openBox(String name) => openStorageBox(name);
 
-  static Future<Box<Map>> productsBox() =>
-      openBox<Map>(productsBoxName);
+  static Box box(String name) => Hive.box(name);
 
-  static Future<Box<Map>> reportsBox() =>
-      openBox<Map>(reportsBoxName);
+  static Future<Box> productsBox() => openBox(productsBoxName);
 
-  static Future<Box<Map>> configBox() =>
-      openBox<Map>(configBoxName);
+  static Future<Box> reportsBox() => openBox(reportsBoxName);
 
-  static Future<Box<Map>> boxFor(String boxName) =>
-      openBox<Map>(boxName);
+  static Future<Box> configBox() => openBox(configBoxName);
+
+  static Future<Box> boxFor(String boxName) => openBox(boxName);
 
   static Future<void> putAll(
     Box box,

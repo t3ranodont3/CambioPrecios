@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
 import '../utils/report_column_mapper.dart';
 
 class ImportReportScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
   }
 
   void _loadLastFile() {
-    final box = Hive.box(configBoxName);
+    final box = HiveHelper.box(configBoxName);
     final path = box.get('last_report_path');
     final name = box.get('last_report_name');
 
@@ -80,24 +80,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
 
       final sheetName = excel.tables.keys.first;
       final sheet = excel.tables[sheetName]!;
-      late Box box;
-      try {
-        final boxName = reportsBoxName;
-        if (!Hive.isBoxOpen(boxName)) {
-          await Hive.openBox(boxName);
-        }
-        box = Hive.box(boxName);
-      } catch (e) {
-        debugPrint('Error opening reports box: $e');
-        try {
-          box = Hive.box('reports');
-        } catch (e2) {
-          setState(
-            () => _status = 'Error: No se pudo acceder al almacenamiento',
-          );
-          return;
-        }
-      }
+      final box = await HiveHelper.reportsBox();
       await box.clear();
       bool foundHeader = false;
       late ReportColumnMapper columnMapper;
@@ -118,7 +101,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
                 for (int j = i + 1; j < row.length; j++) {
                   final nextCellStr = row[j]?.value?.toString().trim() ?? '';
                   if (nextCellStr.isNotEmpty) {
-                    final configBox = Hive.box(configBoxName);
+                    final configBox = HiveHelper.box(configBoxName);
                     await configBox.put('establishment_code', nextCellStr);
                     break;
                   }
@@ -186,7 +169,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
       }
 
       // Guardar ruta del archivo
-      final configBox = Hive.box(configBoxName);
+      final configBox = HiveHelper.box(configBoxName);
       if (filePath != null) {
         await configBox.put('last_report_path', filePath);
       }

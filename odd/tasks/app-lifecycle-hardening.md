@@ -14,7 +14,7 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 - On app resume, restore/re-read local persisted state only. DIGEMID synchronization remains a deliberate **manual user action**; resume must not initiate remote calls.
 - Keep existing user data and current credential/product behavior. Do not broaden this work into a new login, account creation, or credential policy.
 - Web is in scope: `GUIDE.md` lists Windows, Android, and Web, and app-routed code includes direct `dart:io` references.
-- The planning-only restriction above applied to the initial planning phase and is now historical: the user selected `stacked-to-main` and authorized ALH-01 implementation. Source and test changes are limited to ALH-01; no configuration, other documentation, Git index, branch, or commits were changed.
+- The planning-only restriction above applied to the initial planning phase and is now historical: the user selected `stacked-to-main` and authorized ALH-01 and ALH-02 implementation. ALH-01 is recorded in commit `5a73874`; ALH-02 is the current uncommitted work unit. No configuration or other documentation is included in these app changes. Push, PR creation, and merge remain separate user decisions.
 
 ## Constraints and unresolved decisions
 
@@ -51,14 +51,24 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Additional checks:** `flutter analyze --no-pub` — no issues; `dart format lib/main.dart lib/src/services/storage_service.dart test/storage_startup_test.dart` — final run formatted 0 files.
   - **Runtime harness:** widget test in `test/storage_startup_test.dart` exercised the failed-startup UI and verified the login route was absent; no device/app launch was run.
   - **Authored change count:** +97 / -29 lines (126 authored changed lines for ALH-01 implementation and regression tests).
-  - **Commit identity:** pending parent-owned work-unit commit; no commit created here.
+  - **Commit identity:** `5a73874` — `fix(storage): fail safely during app startup`.
+  - **RDD assessment:** mode on; native assessment against base `81d48f901270a59e93fc06f8dc248e8833cb273e` returned risk `medium`, `review_due: false`, reason `under_budget`, and `changed_lines: 238` (commit assessment includes the task document).
+  - **Boundary status:** this slice remains pending review until a future commit reaches the delivery budget; the current assessment did not make review due.
 
-- [ ] **ALH-02 — Unify Hive access and make recovery non-destructive.**
+- [x] **ALH-02 — Unify Hive access and make recovery non-destructive.**
   - **Implementation route:** `delegated`.
   - **Task routing trigger:** multi-file, non-trivial writer; preparation requires reading across 4+ files.
   - **Route:** `lib/src/services/storage_service.dart`, `lib/src/services/hive_helper.dart`, plus direct Hive-opening call sites in `lib/src/screens/{import_catalog_screen.dart,import_report_screen.dart,export_csv_screen.dart,sync_screen.dart,edit_screen.dart}`; storage tests under `test/`.
-  - **Trigger evidence:** ALH-01 changed the storage-service opener to propagate failures without deleting boxes; `hive_helper.dart` still opens without a cipher and deletes on failure, and several screens independently open boxes without a cipher. These remaining access paths still require the unified, non-destructive policy in ALH-02.
+  - **Trigger evidence:** ALH-01 changed the storage-service opener to propagate failures without deleting boxes; `hive_helper.dart` and routed screens previously opened boxes without the shared AES cipher, and fallback paths could use unscoped plaintext boxes.
   - **Done when:** app box access follows one explicit, tested policy; failure never deletes/recreates a user's box; tests establish that incompatible existing data remains untouched and the failure is surfaced. No encryption migration is performed without an explicit approved policy.
+  - **Outcome:** `openStorageBox` is the sole app opener and applies the persisted AES key, with crash recovery disabled so a cipher/checksum mismatch cannot truncate existing files. `HiveHelper` delegates all opens to it; screen, widget, and utility accesses use the helper, and unscoped plaintext fallbacks and delete/recreate recovery were removed. If a key is missing while the active user's boxes already exist, initialization fails before generating a replacement key. No legacy data is migrated or deleted.
+  - **Changed files:** `lib/src/services/storage_service.dart`, `lib/src/services/hive_helper.dart`, `lib/src/screens/{edit_screen.dart,export_csv_screen.dart,import_catalog_screen.dart,import_report_screen.dart,sync_screen.dart}`, `lib/src/widgets/catalog_search_dialog.dart`, `lib/src/utils/price_utils.dart`, `test/storage_box_policy_test.dart`.
+  - **TDD evidence:** RED — `flutter test --no-pub test/storage_box_policy_test.dart` initially showed helper opens used plaintext (returned a box where encrypted open should fail) and missing keys were generated despite existing data. GREEN — `flutter test --no-pub test/storage_box_policy_test.dart` passed (3 tests), proving encrypted persistence/idempotent open, unchanged bytes after cipher mismatch, and no replacement key/data loss when a key is missing.
+  - **Additional checks:** `flutter test --no-pub` — all 11 tests passed; `flutter analyze --no-pub` — no issues; `dart format lib/src/services/storage_service.dart lib/src/services/hive_helper.dart lib/src/screens/import_catalog_screen.dart lib/src/screens/import_report_screen.dart lib/src/screens/export_csv_screen.dart lib/src/screens/sync_screen.dart lib/src/screens/edit_screen.dart lib/src/widgets/catalog_search_dialog.dart lib/src/utils/price_utils.dart test/storage_box_policy_test.dart` — final run formatted 0 files.
+  - **Runtime harness:** Hive storage tests use temporary directories and mocked secure storage; no app/device launch or DIGEMID sync was run.
+  - **Authored change count:** +420 / -273 lines (693 implementation and regression-test lines, including Dart formatter changes).
+  - **Commit identity:** pending parent-owned local work-unit commit; no commit created here.
+  - **RDD boundary:** mode on; this writer did not run a native assessment. The current reviewed boundary remains `81d48f901270a59e93fc06f8dc248e8833cb273e`, pending the parent-owned next assessment. No push, PR, or merge was performed.
 
 - [ ] **ALH-03 — Make authentication state and protected navigation consistent.**
   - **Implementation route:** `delegated`.
@@ -98,7 +108,8 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 ## Forecast and slice plan
 
 - **Forecast:** approximately **650–850 authored lines (additions + deletions)** across implementation and regression tests. This is an estimate, not a measured diff; the platform adapters and lifecycle/auth coverage are the main uncertainty.
-- **Running count after ALH-01:** 126 authored changed lines (+97 / -29). The remaining ALH-02–ALH-05 forecast is approximately 524–724 authored lines; the projected feature total remains 650–850 pending re-estimation at slice boundaries.
+- **Running count through ALH-02:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines, including its task-document additions. ALH-02 implementation/tests add +420 / -273 = 693 lines; this task-document update adds +12 / -3. Cumulative known work is +641 / -305 = **946 authored lines**.
+- The original 650–850 implementation/test forecast has been nearly consumed by ALH-01 and ALH-02 alone (819 source/test lines to date); re-estimate ALH-03–ALH-05 before proceeding rather than using the earlier 524–724 remaining estimate. Including this documentation, ALH-02 is +432 / -276 = 708 lines and exceeds the 400-line advisory threshold; parent owns the next delivery-boundary assessment and any slicing decision.
 - **~400-line heuristic:** **Exceeds** the advisory threshold. Keep the work split into the following ordered slices/PRs.
 - **Review slices (intended stack/merge order, contingent on separate user authorization for PR creation and merge):**
   1. Startup gate + non-destructive unified Hive access and storage tests (`fix(storage): fail safely during app startup`).
@@ -108,5 +119,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 implementation and regression tests are complete and pass the checks recorded above. No ALH-02 or later work has started. No commit has been created; the parent owns the work-unit commit, native RDD, and delivery actions.
-- **Next:** proceed with ALH-02 only. Continue the ordered task/slice plan, preserve existing user data and manual-only DIGEMID synchronization, and keep push, PR creation, and merge as separate user decisions. No PR was created or merged for ALH-01.
+- **Progress:** ALH-01 is committed as `5a73874` and remains pending review under its medium/under-budget assessment. ALH-02 implementation and regression tests are complete and passing; its work-unit commit and native assessment remain parent-owned. No ALH-03 or later work has started.
+- **Next:** ALH-03 only, after the parent-owned ALH-02 work-unit commit and next RDD assessment against the current reviewed boundary. Preserve user data and manual-only DIGEMID synchronization; push, PR creation, and merge remain separate user decisions. No PR was created or merged here.

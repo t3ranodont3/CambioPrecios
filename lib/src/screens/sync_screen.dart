@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/precio_ws.dart';
 import '../models/report_record.dart';
 import '../services/digemid_service.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
 
 class SyncScreen extends StatefulWidget {
   const SyncScreen({super.key});
@@ -81,7 +81,10 @@ class _SyncScreenState extends State<SyncScreen> {
   // ---------------------------------------------------------------------------
   Future<void> _obtenerListaProductos() async {
     if (_idSucursal.isEmpty) {
-      _setStatus('⚠️ Configure el código de establecimiento primero.', error: true);
+      _setStatus(
+        '⚠️ Configure el código de establecimiento primero.',
+        error: true,
+      );
       return;
     }
 
@@ -110,7 +113,10 @@ class _SyncScreenState extends State<SyncScreen> {
   // ---------------------------------------------------------------------------
   Future<void> _actualizarProductos() async {
     if (_idSucursal.isEmpty) {
-      _setStatus('⚠️ Configure el código de establecimiento primero.', error: true);
+      _setStatus(
+        '⚠️ Configure el código de establecimiento primero.',
+        error: true,
+      );
       return;
     }
 
@@ -164,8 +170,10 @@ class _SyncScreenState extends State<SyncScreen> {
       final errSummary = errors.isNotEmpty
           ? '\nErrores:\n${errors.take(5).join('\n')}${errors.length > 5 ? '\n...y ${errors.length - 5} más' : ''}'
           : '';
-      _setStatus('✅ Enviados: $ok | Fallidos: $fail$errSummary',
-          error: fail > 0);
+      _setStatus(
+        '✅ Enviados: $ok | Fallidos: $fail$errSummary',
+        error: fail > 0,
+      );
     } on DigemidServiceException catch (e) {
       _setStatus('❌ Error: ${e.message}', error: true);
     } catch (e) {
@@ -180,7 +188,10 @@ class _SyncScreenState extends State<SyncScreen> {
   // ---------------------------------------------------------------------------
   Future<void> _deshabilitarProducto(String idProducto) async {
     if (_idSucursal.isEmpty) {
-      _setStatus('⚠️ Configure el código de establecimiento primero.', error: true);
+      _setStatus(
+        '⚠️ Configure el código de establecimiento primero.',
+        error: true,
+      );
       return;
     }
 
@@ -209,7 +220,10 @@ class _SyncScreenState extends State<SyncScreen> {
   // ---------------------------------------------------------------------------
   Future<void> _replicarPrecios() async {
     if (_idSucursal.isEmpty) {
-      _setStatus('⚠️ Configure el código de establecimiento primero.', error: true);
+      _setStatus(
+        '⚠️ Configure el código de establecimiento primero.',
+        error: true,
+      );
       return;
     }
 
@@ -234,12 +248,7 @@ class _SyncScreenState extends State<SyncScreen> {
   // Helpers
   // ---------------------------------------------------------------------------
   Future<List<ReportRecord>> _loadLocalRecords() async {
-    Box box;
-    if (!Hive.isBoxOpen(reportsBoxName)) {
-      box = await Hive.openBox(reportsBoxName);
-    } else {
-      box = Hive.box(reportsBoxName);
-    }
+    final box = await HiveHelper.reportsBox();
 
     final recs = <ReportRecord>[];
     for (var item in box.values) {
@@ -324,7 +333,8 @@ class _SyncScreenState extends State<SyncScreen> {
               controller: _urlCtrl,
               decoration: const InputDecoration(
                 labelText: 'URL del Web Service',
-                hintText: 'https://opm-digemid.minsa.gob.pe/ServicePrecios.asmx',
+                hintText:
+                    'https://opm-digemid.minsa.gob.pe/ServicePrecios.asmx',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.link),
                 isDense: true,
@@ -371,8 +381,12 @@ class _SyncScreenState extends State<SyncScreen> {
                   'Código de Sucursal (establecimiento): $_idSucursal',
                   style: TextStyle(
                     fontSize: 13,
-                    color: _idSucursal.isEmpty ? Colors.red : Colors.grey.shade700,
-                    fontWeight: _idSucursal.isEmpty ? FontWeight.bold : FontWeight.normal,
+                    color: _idSucursal.isEmpty
+                        ? Colors.red
+                        : Colors.grey.shade700,
+                    fontWeight: _idSucursal.isEmpty
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ],
@@ -438,12 +452,13 @@ class _SyncScreenState extends State<SyncScreen> {
               icon: Icons.download,
               color: Colors.blue,
               title: 'Obtener Lista de Productos',
-              subtitle: 'Consultar los precios actuales de la sucursal en DIGEMID',
+              subtitle:
+                  'Consultar los precios actuales de la sucursal en DIGEMID',
               onTap: _isLoading ? null : _obtenerListaProductos,
             ),
             const Divider(),
 
-            // Actualizar Productos  
+            // Actualizar Productos
             _OperationTile(
               icon: Icons.upload,
               color: Colors.green,
@@ -488,7 +503,10 @@ class _SyncScreenState extends State<SyncScreen> {
                 const SizedBox(width: 8),
                 Text(
                   'Productos del Servidor (${_wsProducts.length})',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
@@ -505,13 +523,17 @@ class _SyncScreenState extends State<SyncScreen> {
                   DataColumn(label: Text('Fecha')),
                 ],
                 rows: _wsProducts.map((p) {
-                  return DataRow(cells: [
-                    DataCell(Text('${p.idProducto}')),
-                    DataCell(Text(p.precioMinUnit.toStringAsFixed(2))),
-                    DataCell(Text(p.precioMaxEmpaq.toStringAsFixed(2))),
-                    DataCell(Text(p.precioPromedio.toStringAsFixed(2))),
-                    DataCell(Text(p.fecha.toLocal().toString().split('.').first)),
-                  ]);
+                  return DataRow(
+                    cells: [
+                      DataCell(Text('${p.idProducto}')),
+                      DataCell(Text(p.precioMinUnit.toStringAsFixed(2))),
+                      DataCell(Text(p.precioMaxEmpaq.toStringAsFixed(2))),
+                      DataCell(Text(p.precioPromedio.toStringAsFixed(2))),
+                      DataCell(
+                        Text(p.fecha.toLocal().toString().split('.').first),
+                      ),
+                    ],
+                  );
                 }).toList(),
               ),
             ),
@@ -625,7 +647,8 @@ class _DeshabilitarTileState extends State<_DeshabilitarTile> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: widget.enabled && _prodIdCtrl.text.trim().isNotEmpty
+                      onPressed:
+                          widget.enabled && _prodIdCtrl.text.trim().isNotEmpty
                           ? () => widget.onDeshabilitar(_prodIdCtrl.text.trim())
                           : null,
                       style: ElevatedButton.styleFrom(

@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
 
 class ImportCatalogScreen extends StatefulWidget {
   const ImportCatalogScreen({super.key});
@@ -23,7 +23,7 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
   }
 
   void _loadLastFile() {
-    final box = Hive.box(configBoxName);
+    final box = HiveHelper.box(configBoxName);
     final path = box.get('last_catalog_path');
     final name = box.get('last_catalog_name');
 
@@ -79,27 +79,10 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
 
       final sheetName = excel.tables.keys.first;
       final sheet = excel.tables[sheetName]!;
-      late Box box;
-      try {
-        final boxName = productsBoxName;
-        if (!Hive.isBoxOpen(boxName)) {
-          await Hive.openBox(boxName);
-        }
-        box = Hive.box(boxName);
-      } catch (e) {
-        debugPrint('Error opening products box: $e');
-        try {
-          box = Hive.box('products');
-        } catch (e2) {
-          setState(
-            () => _status = 'Error: No se pudo acceder al almacenamiento',
-          );
-          return;
-        }
-      }
+      final box = await HiveHelper.productsBox();
       await box.clear();
       bool foundHeader = false;
-      
+
       final Map<int, Map<String, dynamic>> batchMap = {};
       int currentIndex = 0;
       const int batchSize = 500;
@@ -159,7 +142,7 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
           'Nom_Rubro': nomRubro,
           'Situacion': situacion,
         };
-        
+
         currentIndex++;
 
         if (batchMap.length >= batchSize) {
@@ -174,7 +157,7 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
       }
 
       // Guardar ruta del archivo
-      final configBox = Hive.box(configBoxName);
+      final configBox = HiveHelper.box(configBoxName);
       if (filePath != null) {
         await configBox.put('last_catalog_path', filePath);
       }

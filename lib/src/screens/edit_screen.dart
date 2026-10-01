@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 
 import '../models/report_record.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
 import '../widgets/edit_dialog.dart';
 import '../widgets/catalog_search_dialog.dart';
 import '../widgets/precios_dialog.dart';
@@ -70,8 +71,8 @@ class _EditScreenState extends State<EditScreen> {
 
   void _initData() {
     try {
-      _reportsBox = Hive.box(reportsBoxName);
-      _configBox = Hive.box(configBoxName);
+      _reportsBox = HiveHelper.box(reportsBoxName);
+      _configBox = HiveHelper.box(configBoxName);
       _lastPath = _configBox?.get('last_report_path');
       _loadRecords();
     } catch (e) {
@@ -208,8 +209,7 @@ class _EditScreenState extends State<EditScreen> {
           final laboratorio = row.length > 3
               ? row[3]?.value?.toString() ?? ''
               : '';
-          final ifa =
-              row.length > 4 ? row[4]?.value?.toString() ?? '' : '';
+          final ifa = row.length > 4 ? row[4]?.value?.toString() ?? '' : '';
           final precioEmpaq = row.length > 5
               ? double.tryParse(row[5]?.value?.toString() ?? '') ?? 0.0
               : 0.0;
@@ -302,9 +302,7 @@ class _EditScreenState extends State<EditScreen> {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'Sesión guardada exitosamente: $fileName.json',
-              ),
+              content: Text('Sesión guardada exitosamente: $fileName.json'),
             ),
           );
         } else {
@@ -331,9 +329,9 @@ class _EditScreenState extends State<EditScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error guardando: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error guardando: $e')));
     }
   }
 
@@ -395,15 +393,15 @@ class _EditScreenState extends State<EditScreen> {
       }
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sesión restaurada')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sesión restaurada')));
     } catch (e) {
       setState(() => _isLoading = false);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error cargando json: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error cargando json: $e')));
     }
   }
 
@@ -473,9 +471,9 @@ class _EditScreenState extends State<EditScreen> {
             _loadRecords();
             setState(() {});
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Precio actualizado')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Precio actualizado')));
           }
         } else if (accion == 'otro') {
           await _addRecord();
@@ -611,8 +609,7 @@ class _EditScreenState extends State<EditScreen> {
           if (_error != null)
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child:
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
+              child: Text(_error!, style: const TextStyle(color: Colors.red)),
             ),
           Expanded(
             child: Column(
@@ -665,8 +662,7 @@ class _EditScreenState extends State<EditScreen> {
                             children: [
                               if (_searchCtrl.text.isNotEmpty &&
                                   _allRecords.isNotEmpty)
-                                const Text(
-                                    'No hay resultados para la búsqueda')
+                                const Text('No hay resultados para la búsqueda')
                               else if (_lastPath != null)
                                 ElevatedButton.icon(
                                   onPressed: _reloadFromFile,
@@ -682,7 +678,8 @@ class _EditScreenState extends State<EditScreen> {
                         )
                       : ListView.builder(
                           controller: _scrollCtrl,
-                          itemCount: records.length +
+                          itemCount:
+                              records.length +
                               (records.length < _filteredRecords.length
                                   ? 1
                                   : 0),
@@ -690,8 +687,9 @@ class _EditScreenState extends State<EditScreen> {
                             if (idx == records.length) {
                               return const Padding(
                                 padding: EdgeInsets.all(16.0),
-                                child:
-                                    Center(child: CircularProgressIndicator()),
+                                child: Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               );
                             }
                             final rec = records[idx];
@@ -700,8 +698,7 @@ class _EditScreenState extends State<EditScreen> {
                                 final realIndex = _cachedRecords.indexWhere(
                                   (r) => r.codProd == rec.codProd,
                                 );
-                                final updated =
-                                    await showDialog<ReportRecord>(
+                                final updated = await showDialog<ReportRecord>(
                                   context: context,
                                   builder: (c) => EditDialog(
                                     record: rec,
@@ -724,8 +721,7 @@ class _EditScreenState extends State<EditScreen> {
                                   vertical: 12.0,
                                 ),
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
                                       mainAxisAlignment:
