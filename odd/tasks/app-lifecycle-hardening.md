@@ -107,8 +107,9 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Additional checks:** `flutter test --no-pub` — all 17 tests passed; `flutter analyze --no-pub` — no issues; `dart format test/app_resume_test.dart` — formatted 1 file (whitespace-only changes to map literals); final rerun `flutter analyze --no-pub` — no issues; `flutter test --no-pub` — all 17 tests passed.
   - **Runtime harness:** `test/app_resume_test.dart` exercises encrypted Hive box persistence across lifecycle transitions and repeated resume cycles; no device/app launch or DIGEMID sync was run.
   - **Authored change count:** +118 / -0 lines (118 authored changed lines — regression test file only; no source code changes needed).
-  - **Commit identity:** pending (parent-owned work-unit commit).
-  - **RDD assessment:** pending parent commit and assessment.
+  - **Commit identity:** `88e4c6b` — `test(app): prove resume does not require new local state reload`.
+  - **Commit stats:** +132 / -6 = 138 authored changed lines.
+  - **RDD assessment:** mode on; native assessment against base `86e2b7b` returned risk `medium`, `review_due: false`, reason `under_budget`, and `changed_lines: 138`.
 
 - [ ] **ALH-05 — Remove Web-incompatible I/O from app-routed flows.**
   - **Execution order:** After ALH-04.
@@ -148,5 +149,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), ALH-03 (`66f8aa3`), and ALH-04 are complete. ALH-01/02/03 cumulative review is terminally acknowledged. The user has authorized ALH-04 as the next task; ALH-05 follows.
-- **Next:** implement ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
+- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), ALH-03 (`66f8aa3`), and ALH-04 (`88e4c6b`) are complete. ALH-01/02/03 cumulative review is terminally acknowledged. ALH-04 required no source changes — the existing code already satisfies the resume contract; regression tests prove it. The user has authorized ALH-05 as the next task.
+- **Next:** implement ALH-05 (remove Web-incompatible I/O from app-routed flows). Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
