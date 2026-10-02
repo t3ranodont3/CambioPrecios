@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -125,4 +126,31 @@ void main() {
     expect(find.text('Iniciar sesi\u00f3n'), findsOneWidget);
     expect(find.text('Protected Home'), findsNothing);
   });
+
+  test(
+    '_checkInitialAuth sets isLoading false even on SharedPreferences error',
+    () async {
+      // Override the SharedPreferences platform channel to throw on getAll().
+      const channel = MethodChannel('plugins.flutter.io/shared_preferences');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+            if (methodCall.method == 'getAll') {
+              throw Exception('SharedPreferences init failed');
+            }
+            return null;
+          });
+
+      final provider = AuthProvider();
+
+      // Wait for the async _checkInitialAuth to complete.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.isLoading, isFalse);
+      expect(provider.isLoggedIn, isFalse);
+
+      // Restore default handler so other tests are unaffected.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    },
+  );
 }

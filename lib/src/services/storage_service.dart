@@ -192,6 +192,18 @@ Future<void> switchUser(String username) async {
   }
 }
 
+Future<void> logoutCleanup() async {
+  try {
+    final username = _currentUsername;
+    if (username != null && username.isNotEmpty && username != 'default') {
+      await _closeBoxesForUser(username);
+    }
+    _currentUsername = null;
+  } catch (e) {
+    debugPrint('Error during logout cleanup: $e');
+  }
+}
+
 Future<void> _closeBoxesForUser(String username) async {
   try {
     final names = [

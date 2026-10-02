@@ -51,6 +51,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_keyUsername);
     await _secureStorage.delete(key: _keyPassword);
+    await logoutCleanup();
   }
 
   static Future<String?> getStoredUsername() async {

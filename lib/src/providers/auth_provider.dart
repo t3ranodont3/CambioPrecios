@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../services/storage_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
@@ -39,7 +38,6 @@ class AuthProvider extends ChangeNotifier {
       if (success) {
         _username = username;
         _isLoggedIn = true;
-        await switchUser(username);
       }
       return success;
     } catch (e) {
