@@ -264,7 +264,14 @@ class _EditScreenState extends State<EditScreen> {
       final recordsList = _reportsBox!.values
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
-      final jsonString = jsonEncode(recordsList);
+
+      // Include establishment data in the export.
+      final establishment = await getEstablishmentInfo();
+      final exportData = {
+        'establishment': establishment,
+        'records': recordsList,
+      };
+      final jsonString = jsonEncode(exportData);
 
       final isMobile = isMobilePlatform;
 
@@ -360,7 +367,35 @@ class _EditScreenState extends State<EditScreen> {
         }
       }
 
-      final List<dynamic> decoded = jsonDecode(data);
+      final dynamic decoded = jsonDecode(data);
+
+      // Support both old format (plain array) and new format (object with
+      // 'records' and optional 'establishment').
+      List<dynamic> records;
+      Map<String, dynamic>? establishmentData;
+      if (decoded is List) {
+        // Old format: JSON array of records.
+        records = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        // New format: object with 'records' key.
+        records = List<dynamic>.from(decoded['records'] ?? []);
+        establishmentData = decoded['establishment'] is Map
+            ? Map<String, dynamic>.from(decoded['establishment'])
+            : null;
+      } else {
+        throw Exception('Formato de archivo no reconocido');
+      }
+
+      // Restore establishment data if present.
+      if (establishmentData != null) {
+        final name = establishmentData['name']?.toString() ?? '';
+        final ruc = establishmentData['ruc']?.toString() ?? '';
+        final code = establishmentData['code']?.toString() ?? '';
+        if (name.isNotEmpty || ruc.isNotEmpty || code.isNotEmpty) {
+          await setEstablishmentInfo(name: name, ruc: ruc, code: code);
+        }
+      }
+
       if (_reportsBox != null) {
         await _reportsBox!.clear();
 
@@ -368,7 +403,7 @@ class _EditScreenState extends State<EditScreen> {
         int currentIndex = 0;
         const int batchSize = 500;
 
-        for (var item in decoded) {
+        for (var item in records) {
           if (item is Map) {
             batchMap[currentIndex] = Map<String, dynamic>.from(item);
             currentIndex++;
