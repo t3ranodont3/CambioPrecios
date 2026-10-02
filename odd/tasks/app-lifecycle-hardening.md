@@ -125,7 +125,9 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **Additional checks:** `flutter test --no-pub` — all 23 tests passed; `flutter analyze --no-pub` — no issues; `dart format lib/src/utils/platform_file.dart lib/src/utils/platform_file_io.dart lib/src/utils/platform_file_web.dart lib/src/screens/import_catalog_screen.dart lib/src/screens/import_report_screen.dart lib/src/screens/edit_screen.dart test/platform_file_test.dart` — formatted 4 files (formatting-only changes to new utility files); final rerun `flutter analyze --no-pub` — no issues; `flutter test --no-pub` — all 23 tests passed; `flutter build web --no-pub` — compiled successfully.
   - **Runtime harness:** `test/platform_file_test.dart` exercises file existence checks, byte reading, string reading, string writing, and platform detection against temporary files on the VM; no device/app launch or DIGEMID sync was run.
   - **Authored change count:** +108 / -18 lines (126 authored changed lines for ALH-05 implementation and regression tests).
-  - **Commit identity:** pending — parent-owned work-unit commit.
+  - **Commit identity:** `5d7a892` — `fix(web): replace dart:io with conditional platform imports`.
+  - **Commit stats:** +122 / -23 = 145 authored changed lines.
+  - **RDD assessment:** mode on; native assessment against base `3790cab` returned risk `medium`, `review_due: false`, reason `under_budget`, and `changed_lines: 145`.
   - **RDD assessment:** pending — parent-owned assessment after commit.
 
 ## Acceptance criteria
@@ -158,5 +160,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), ALH-03 (`66f8aa3`), ALH-04 (`88e4c6b`), and ALH-05 are complete. ALH-01/02/03 cumulative review is terminally acknowledged. ALH-04 required no source changes — the existing code already satisfies the resume contract; regression tests prove it. ALH-05 removed Web-incompatible `dart:io` from all app-routed screens by creating a platform-conditional file utility following the `csv_export.dart` pattern; `flutter build web` compiles successfully.
-- **Next:** all five ALH tasks are complete. Push, PR creation, merge, and RDD assessment remain parent/user decisions; none was performed here.
+- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), ALH-03 (`66f8aa3`), ALH-04 (`88e4c6b`), and ALH-05 (`5d7a892`) are complete. ALH-01/02/03 cumulative review is terminally acknowledged. ALH-04 required no source changes — the existing code already satisfies the resume contract; regression tests prove it. ALH-05 removed Web-incompatible `dart:io` from all app-routed screens by creating a platform-conditional file utility following the `csv_export.dart` pattern; `flutter build web` compiles successfully.
+- **Next:** all five ALH tasks are complete. Push, PR creation, merge, and delivery remain parent/user decisions; none was performed here.
