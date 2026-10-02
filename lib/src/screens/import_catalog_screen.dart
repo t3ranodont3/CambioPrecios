@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/storage_service.dart';
 import '../services/hive_helper.dart';
+import '../utils/platform_file.dart';
 
 class ImportCatalogScreen extends StatefulWidget {
   const ImportCatalogScreen({super.key});
@@ -35,7 +35,7 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
       }
     } else {
       if (path != null) {
-        if (File(path).existsSync()) {
+        if (fileExistsSync(path)) {
           setState(() {
             _status = 'Último archivo: $path';
           });
@@ -69,7 +69,7 @@ class _ImportCatalogScreenState extends State<ImportCatalogScreen> {
         bytes = result.files.single.bytes!;
       } else if (result.files.single.path != null) {
         filePath = result.files.single.path!;
-        bytes = File(filePath).readAsBytesSync();
+        bytes = readBytesSync(filePath);
       } else {
         setState(() => _status = 'Error: No se pudo leer el archivo');
         return;

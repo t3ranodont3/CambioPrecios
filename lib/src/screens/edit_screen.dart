@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:file_saver/file_saver.dart';
@@ -16,6 +15,7 @@ import '../widgets/edit_dialog.dart';
 import '../widgets/catalog_search_dialog.dart';
 import '../widgets/precios_dialog.dart';
 import '../utils/price_utils.dart';
+import '../utils/platform_file.dart';
 import 'export_csv_screen.dart';
 
 class EditScreen extends StatefulWidget {
@@ -159,8 +159,7 @@ class _EditScreenState extends State<EditScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final file = File(_lastPath!);
-      if (!file.existsSync()) {
+      if (!fileExistsSync(_lastPath!)) {
         setState(() {
           _error = 'El archivo previo ya no existe en: $_lastPath';
           _isLoading = false;
@@ -168,7 +167,7 @@ class _EditScreenState extends State<EditScreen> {
         return;
       }
 
-      final bytes = file.readAsBytesSync();
+      final bytes = readBytesSync(_lastPath!);
       final excel = Excel.decodeBytes(bytes);
       final sheetName = excel.tables.keys.first;
       final sheet = excel.tables[sheetName]!;
@@ -267,10 +266,7 @@ class _EditScreenState extends State<EditScreen> {
           .toList();
       final jsonString = jsonEncode(recordsList);
 
-      bool isMobile = false;
-      if (!kIsWeb) {
-        isMobile = Platform.isAndroid || Platform.isIOS;
-      }
+      final isMobile = isMobilePlatform;
 
       final now = DateTime.now();
       final dateStr = DateFormat('yyMMdd HHmm').format(now);
@@ -319,8 +315,7 @@ class _EditScreenState extends State<EditScreen> {
           allowedExtensions: ['json'],
         );
         if (outPath != null) {
-          final file = File(outPath);
-          await file.writeAsString(jsonString);
+          await writeFileAsString(outPath, jsonString);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Sesión guardada en $outPath')),
@@ -357,8 +352,7 @@ class _EditScreenState extends State<EditScreen> {
         }
       } else {
         if (result.files.single.path != null) {
-          final file = File(result.files.single.path!);
-          data = await file.readAsString();
+          data = await readFileAsString(result.files.single.path!);
         } else if (result.files.single.bytes != null) {
           data = utf8.decode(result.files.single.bytes!);
         } else {
