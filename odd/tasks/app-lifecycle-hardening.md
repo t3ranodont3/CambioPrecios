@@ -94,13 +94,21 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
   - **RDD assessment:** mode on; native assessment against base `2d6ca52` returned risk `high`, `review_due: true`, reason `high_risk`, and `changed_lines: 265`.
   - **Native review resolution:** `gentle-ai.review-acknowledged/v1`; action `acknowledged`; authority `burned`; lineage `review-e9bfab7d1dadce2b`; target `sha256:c1055eaaa31ab922d0f3f78896f28e28ac1d335d0cc5e1b596a0b88038ad88e0`. The review completed with 11 advisory findings (WARNING/SUGGESTION), all informational; no blockers or criticals. Review is terminal.
 
-- [ ] **ALH-04 — Restore local state on app resume, never auto-sync.**
+- [x] **ALH-04 — Restore local state on app resume, never auto-sync.**
   - **Execution order:** After ALH-03; ALH-05 follows.
   - **Implementation route:** `delegated`.
   - **Task routing trigger:** multi-file, non-trivial writer; preparation requires reading across 4+ files.
   - **Route:** app lifecycle/root coordination in `lib/main.dart` and the relevant local-state providers/services; lifecycle/widget tests under `test/`.
   - **Trigger evidence:** no `WidgetsBindingObserver`, `didChangeAppLifecycleState`, or equivalent resume handler was found.
   - **Done when:** a simulated resume refreshes/restores needed local persisted state for the active app and is covered by a regression test; a test or injected boundary proves resume does not call DIGEMID/network operations. The existing Sync screen actions remain manual.
+  - **Scope decision:** No observable local state requires refresh on resume. Exploration evidence: (1) Hive boxes are opened once via `initStorage()` during startup and remain open for the process lifetime; on resume, boxes are still open and their data is current in memory. (2) `AuthProvider` reads from SharedPreferences once at construction (`_checkInitialAuth`); on resume, SharedPreferences cache is unchanged. (3) `EstablishmentProvider` reads from Hive config box once at construction (`load()`); on resume, Hive data has not changed. (4) `HomeScreen` local state (`_estName/_estRuc/_estCode`) is loaded from `getEstablishmentInfo()` in `initState` with explicit refresh after returning from `/edit` and `/export` routes. (5) `DigemidService` is only instantiated in `SyncScreen._buildService()`, invoked by explicit UI button presses — never from any lifecycle observer. (6) No background process modifies Hive files or SharedPreferences while the app is paused. Per the task directive: "If exploration shows no observable local state requires refresh… report the evidence and stop rather than adding a ceremonial observer." No `WidgetsBindingObserver` was added. Regression tests prove the contract.
+  - **Changed files:** `test/app_resume_test.dart` (new).
+  - **TDD evidence:** GREEN — regression tests pass against existing code because the current implementation already satisfies the resume contract: Hive boxes persist across lifecycle transitions, `getEstablishmentInfo()` returns correct data after resume, and no DIGEMID/network operations are triggered. `flutter test --no-pub test/app_resume_test.dart` passed (2 tests). The tests use `test()` rather than `testWidgets()` because `testWidgets` + `Hive.openBox` causes a hang in this test environment (verified: identical Hive operations pass in `test()` but timeout in `testWidgets` with `pump()`); the lifecycle event dispatch (`handleAppLifecycleStateChanged`) does not require a widget tree.
+  - **Additional checks:** `flutter test --no-pub` — all 17 tests passed; `flutter analyze --no-pub` — no issues; `dart format test/app_resume_test.dart` — formatted 1 file (whitespace-only changes to map literals); final rerun `flutter analyze --no-pub` — no issues; `flutter test --no-pub` — all 17 tests passed.
+  - **Runtime harness:** `test/app_resume_test.dart` exercises encrypted Hive box persistence across lifecycle transitions and repeated resume cycles; no device/app launch or DIGEMID sync was run.
+  - **Authored change count:** +118 / -0 lines (118 authored changed lines — regression test file only; no source code changes needed).
+  - **Commit identity:** pending (parent-owned work-unit commit).
+  - **RDD assessment:** pending parent commit and assessment.
 
 - [ ] **ALH-05 — Remove Web-incompatible I/O from app-routed flows.**
   - **Execution order:** After ALH-04.
@@ -127,9 +135,9 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 ## Forecast and slice plan
 
 - **Original forecast:** 650–850 authored lines across implementation and regression tests; this estimate has been exceeded.
-- **Running count through ALH-03:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines. ALH-02 commit `2d6ca52` is +438 / -280 = 718 authored lines. ALH-03 commit `66f8aa3` is +226 / -39 = 265 authored lines. Cumulative work-unit commits total +873 / -348 = **1,221 authored lines**.
-- **ALH-03 estimate:** approximately 200–350 authored lines; ALH-03 is complete at 265 authored lines (within estimate).
-- **Remaining forecast (ALH-04 through ALH-05):** approximately 150–250 for local-only resume handling and 300–500 for Web-compatible file flows; total approximately **450–750 authored lines**, excluding future task-document deltas. Revisit at each task boundary.
+- **Running count through ALH-04:** ALH-01 commit `5a73874` is +209 / -29 = 238 authored lines. ALH-02 commit `2d6ca52` is +438 / -280 = 718 authored lines. ALH-03 commit `66f8aa3` is +226 / -39 = 265 authored lines. ALH-04 is +118 / -0 = 118 authored lines (regression test only; no source changes needed). Cumulative work-unit commits total +991 / -348 = **1,339 authored lines**.
+- **ALH-04 estimate:** approximately 150–250 for local-only resume handling; ALH-04 is complete at 118 authored lines (below estimate — no implementation was needed because the contract is already satisfied by the existing code).
+- **Remaining forecast (ALH-05):** approximately 300–500 for Web-compatible file flows; total approximately **300–500 authored lines**, excluding future task-document deltas. Revisit at each task boundary.
 - The cumulative committed work exceeds the 400-line advisory threshold and the original feature forecast. `stacked-to-main` still describes the intended order only; parent/user decisions are required for any push, PR creation, merge, or further delivery slicing.
 - **~400-line heuristic:** **Exceeds** the advisory threshold. Keep the work split into the following ordered slices/PRs.
 - **Review slices (intended stack/merge order, contingent on separate user authorization for PR creation and merge):**
@@ -140,5 +148,5 @@ The read-only map confirmed that `main()` runs the app even when `initStorage()`
 
 ## Current progress and next step
 
-- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), and ALH-03 (`66f8aa3`) are complete and their cumulative review is terminally acknowledged. The user has authorized ALH-04 as the next task; ALH-05 follows.
-- **Next:** implement ALH-04, then ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
+- **Progress:** ALH-01 (`5a73874`), ALH-02 (`2d6ca52`), ALH-03 (`66f8aa3`), and ALH-04 are complete. ALH-01/02/03 cumulative review is terminally acknowledged. The user has authorized ALH-04 as the next task; ALH-05 follows.
+- **Next:** implement ALH-05. Preserve user data, the uncommitted `analysis_options.yaml`/`pubspec.lock` changes, and manual-only DIGEMID synchronization. Push, PR creation, and merge remain separate user decisions; none was performed here.
