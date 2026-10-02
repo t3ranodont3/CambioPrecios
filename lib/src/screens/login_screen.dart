@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
-import '../services/storage_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,7 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
-    final success = await AuthService.login(_username, _password);
+    final auth = context.read<AuthProvider>();
+    final success = await auth.login(_username, _password);
     if (!mounted) return;
     if (success) {
       // 2FA PIN desactivado temporalmente
@@ -98,10 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-
-
   Future<void> _finalizeLogin() async {
-    await switchUser(_username);
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/home');
   }

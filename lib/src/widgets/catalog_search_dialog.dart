@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import '../services/hive_helper.dart';
 import '../services/storage_service.dart';
 
 class CatalogSearchDialog extends StatefulWidget {
@@ -32,12 +32,7 @@ class CatalogSearchDialogState extends State<CatalogSearchDialog> {
 
   void _loadCatalog() {
     try {
-      Box box;
-      try {
-        box = Hive.box(productsBoxName);
-      } catch (e) {
-        box = Hive.box('products');
-      }
+      final box = HiveHelper.box(productsBoxName);
       final products = box.values.map((e) {
         if (e is Map) return Map<dynamic, dynamic>.from(e);
         return <dynamic, dynamic>{};
@@ -82,7 +77,10 @@ class CatalogSearchDialogState extends State<CatalogSearchDialog> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final horizontalInset = (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS))
+    final horizontalInset =
+        (!kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.iOS))
         ? width * 0.025
         : 40.0;
 
@@ -135,77 +133,77 @@ class CatalogSearchDialogState extends State<CatalogSearchDialog> {
                       ),
                     )
                   : _filtered.isEmpty
-                      ? const Center(
-                          child: Text('No hay resultados para la búsqueda'),
-                        )
-                      : ListView.builder(
-                          itemCount: _filtered.length,
-                          itemBuilder: (context, idx) {
-                            final p = _filtered[idx];
-                            return InkWell(
-                              onTap: () => Navigator.pop(context, p),
-                              child: Container(
-                                color: idx % 2 == 0
-                                    ? Colors.white
-                                    : Colors.blueGrey[50],
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 12.0,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                  ? const Center(
+                      child: Text('No hay resultados para la búsqueda'),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      itemBuilder: (context, idx) {
+                        final p = _filtered[idx];
+                        return InkWell(
+                          onTap: () => Navigator.pop(context, p),
+                          child: Container(
+                            color: idx % 2 == 0
+                                ? Colors.white
+                                : Colors.blueGrey[50],
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16.0,
+                              vertical: 12.0,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            p['Nom_Prod']?.toString() ??
-                                                'Sin nombre',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                            ),
-                                          ),
+                                    Expanded(
+                                      child: Text(
+                                        p['Nom_Prod']?.toString() ??
+                                            'Sin nombre',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
                                         ),
-                                        Text(
-                                          'Cód: ${p['Cod_Prod'] ?? ''}',
-                                          style: const TextStyle(
-                                            color: Colors.deepPurple,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Lab: ${p['Nom_Titular'] ?? p['Nom_Fabricante'] ?? ''} | IFA: ${p['Nom_IFA'] ?? ''}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.blueGrey,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
                                     Text(
-                                      'Forma: ${p['Nom_Form_Farm'] ?? ''} | Concent: ${p['Concent'] ?? ''} | Pres: ${p['Presentac'] ?? ''} | Fracc: ${p['Fraccion'] ?? ''}',
-                                      style: const TextStyle(fontSize: 13),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'Rubro: ${p['Nom_Rubro'] ?? ''} | Situación: ${p['Situacion'] ?? ''} | RegSan: ${p['Num_RegSan'] ?? ''}',
+                                      'Cód: ${p['Cod_Prod'] ?? ''}',
                                       style: const TextStyle(
-                                        fontSize: 13,
-                                        fontStyle: FontStyle.italic,
+                                        color: Colors.deepPurple,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-                            );
-                          },
-                        ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Lab: ${p['Nom_Titular'] ?? p['Nom_Fabricante'] ?? ''} | IFA: ${p['Nom_IFA'] ?? ''}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Forma: ${p['Nom_Form_Farm'] ?? ''} | Concent: ${p['Concent'] ?? ''} | Pres: ${p['Presentac'] ?? ''} | Fracc: ${p['Fraccion'] ?? ''}',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Rubro: ${p['Nom_Rubro'] ?? ''} | Situación: ${p['Situacion'] ?? ''} | RegSan: ${p['Num_RegSan'] ?? ''}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

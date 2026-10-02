@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -15,54 +16,84 @@ String get currentUsername {
   return _currentUsername!;
 }
 
-Future<List<int>> _getOrCreateHiveKey() async {
+Future<List<int>> _getOrCreateHiveKey(
+  Iterable<String> protectedBoxNames,
+) async {
   String? encodedKey = await _secureStorage.read(key: 'hive_aes_key');
-  if (encodedKey == null) {
-    final key = Hive.generateSecureKey();
-    await _secureStorage.write(
-      key: 'hive_aes_key',
-      value: base64UrlEncode(key),
-    );
-    return key;
+  if (encodedKey != null) {
+    return base64Url.decode(encodedKey);
   }
-  return base64Url.decode(encodedKey);
+
+  for (final boxName in protectedBoxNames) {
+    if (await Hive.boxExists(boxName)) {
+      throw HiveError(
+        'Hive encryption key is missing while box "$boxName" exists. '
+        'The box was left untouched.',
+      );
+    }
+  }
+
+  final key = Hive.generateSecureKey();
+  await _secureStorage.write(key: 'hive_aes_key', value: base64UrlEncode(key));
+  return key;
 }
 
 Future<void> initStorage() async {
-  try {
-    await Hive.initFlutter();
+  await Hive.initFlutter();
 
-    final prefs = await SharedPreferences.getInstance();
-    _currentUsername = prefs.getString('username');
+  final prefs = await SharedPreferences.getInstance();
+  _currentUsername = prefs.getString('username');
 
-    if (_currentUsername == null || _currentUsername!.isEmpty) {
-      _currentUsername = 'default';
-    }
-
-    _encryptionKey = await _getOrCreateHiveKey();
-
-    await _openOrCreateBox(productsBoxName);
-    await _openOrCreateBox(reportsBoxName);
-    await _openOrCreateBox(configBoxName);
-  } catch (e) {
-    debugPrint('Error initializing Hive: $e');
+  if (_currentUsername == null || _currentUsername!.isEmpty) {
+    _currentUsername = 'default';
   }
+
+  _encryptionKey = await _getOrCreateHiveKey([
+    productsBoxName,
+    reportsBoxName,
+    configBoxName,
+  ]);
+
+  await openStorageBox(productsBoxName);
+  await openStorageBox(reportsBoxName);
+  await openStorageBox(configBoxName);
 }
 
-Future<Box> _openOrCreateBox(String boxName) async {
-  try {
-    return await Hive.openBox(
-      boxName,
-      encryptionCipher: HiveAesCipher(_encryptionKey!),
-    );
-  } catch (e) {
-    debugPrint('Error: Incompatible encryption for $boxName. Recreating...');
-    await Hive.deleteBoxFromDisk(boxName);
-    return await Hive.openBox(
-      boxName,
-      encryptionCipher: HiveAesCipher(_encryptionKey!),
-    );
+Future<Box> openStorageBox(String boxName) async {
+  if (Hive.isBoxOpen(boxName)) {
+    return Hive.box(boxName);
   }
+
+  final key = _encryptionKey ??= await _getOrCreateHiveKey([boxName]);
+  final result = Completer<Box>();
+  // Hive 2.2 may emit a second zone error from its in-flight open completer.
+  runZonedGuarded(
+    () {
+      Hive.openBox(
+        boxName,
+        encryptionCipher: HiveAesCipher(key),
+        // A cipher mismatch must fail, not truncate the existing box as
+        // crash recovery.
+        crashRecovery: false,
+      ).then(
+        (box) {
+          if (!result.isCompleted) result.complete(box);
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          if (!result.isCompleted) result.completeError(error, stackTrace);
+        },
+      );
+    },
+    (error, stackTrace) {
+      if (!result.isCompleted) {
+        result.completeError(error, stackTrace);
+      } else {
+        debugPrint('Additional Hive open error for "$boxName": $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    },
+  );
+  return result.future;
 }
 
 String get productsBoxName => 'products_$currentUsername';
@@ -135,7 +166,7 @@ Future<Map<String, String>> getWsConfig() async {
 }
 
 Future<Box> _openConfigBox() async {
-  return _openOrCreateBox(configBoxName);
+  return openStorageBox(configBoxName);
 }
 
 Future<void> switchUser(String username) async {
@@ -147,11 +178,15 @@ Future<void> switchUser(String username) async {
       await _closeBoxesForUser(oldUsername);
     }
 
-    _encryptionKey ??= await _getOrCreateHiveKey();
+    _encryptionKey ??= await _getOrCreateHiveKey([
+      productsBoxName,
+      reportsBoxName,
+      configBoxName,
+    ]);
 
-    await _openOrCreateBox(productsBoxName);
-    await _openOrCreateBox(reportsBoxName);
-    await _openOrCreateBox(configBoxName);
+    await openStorageBox(productsBoxName);
+    await openStorageBox(reportsBoxName);
+    await openStorageBox(configBoxName);
   } catch (e) {
     debugPrint('Error switching user: $e');
   }

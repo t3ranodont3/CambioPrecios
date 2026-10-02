@@ -13,8 +13,47 @@ import 'src/screens/sync_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initStorage();
-  runApp(const MyApp());
+  runApp(await createStartupApp());
+}
+
+Future<Widget> createStartupApp({
+  Future<void> Function() initializeStorage = initStorage,
+}) async {
+  try {
+    await initializeStorage();
+    return const MyApp();
+  } catch (error, stackTrace) {
+    debugPrint('Storage initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    return const StorageStartupFailureApp();
+  }
+}
+
+class AuthGuard extends StatelessWidget {
+  final Widget child;
+  const AuthGuard({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (!auth.isLoggedIn) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Navigator.of(context).pushReplacementNamed('/login');
+          });
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        return child;
+      },
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -35,13 +74,39 @@ class MyApp extends StatelessWidget {
         initialRoute: '/login',
         routes: {
           '/login': (c) => const LoginScreen(),
-          '/home': (c) => const HomeScreen(),
-          '/import_catalog': (c) => const ImportCatalogScreen(),
-          '/import_report': (c) => const ImportReportScreen(),
-          '/edit': (c) => const EditScreen(),
-          '/export': (c) => const ExportCsvScreen(),
-          '/sync': (c) => const SyncScreen(),
+          '/home': (c) => const AuthGuard(child: HomeScreen()),
+          '/import_catalog': (c) =>
+              const AuthGuard(child: ImportCatalogScreen()),
+          '/import_report': (c) => const AuthGuard(child: ImportReportScreen()),
+          '/edit': (c) => const AuthGuard(child: EditScreen()),
+          '/export': (c) => const AuthGuard(child: ExportCsvScreen()),
+          '/sync': (c) => const AuthGuard(child: SyncScreen()),
         },
+      ),
+    );
+  }
+}
+
+class StorageStartupFailureApp extends StatelessWidget {
+  const StorageStartupFailureApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CambioPrecios DIGEMID',
+      home: Scaffold(
+        appBar: AppBar(title: const Text('No se pudo iniciar la aplicación')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No se pudo inicializar el almacenamiento local. '
+              'La aplicación no se inició y los datos existentes no se '
+              'restablecieron. Reinicie la aplicación o contacte al soporte.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       ),
     );
   }

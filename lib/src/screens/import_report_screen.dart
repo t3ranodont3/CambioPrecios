@@ -1,10 +1,11 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
+import '../utils/report_column_mapper.dart';
+import '../utils/platform_file.dart';
 
 class ImportReportScreen extends StatefulWidget {
   const ImportReportScreen({super.key});
@@ -23,7 +24,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
   }
 
   void _loadLastFile() {
-    final box = Hive.box(configBoxName);
+    final box = HiveHelper.box(configBoxName);
     final path = box.get('last_report_path');
     final name = box.get('last_report_name');
 
@@ -35,7 +36,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
       }
     } else {
       if (path != null) {
-        if (File(path).existsSync()) {
+        if (fileExistsSync(path)) {
           setState(() {
             _status = 'Último archivo: $path';
           });
@@ -69,7 +70,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
         bytes = result.files.single.bytes!;
       } else if (result.files.single.path != null) {
         filePath = result.files.single.path!;
-        bytes = File(filePath).readAsBytesSync();
+        bytes = readBytesSync(filePath);
       } else {
         setState(() => _status = 'Error: No se pudo leer el archivo');
         return;
@@ -79,27 +80,11 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
 
       final sheetName = excel.tables.keys.first;
       final sheet = excel.tables[sheetName]!;
-      late Box box;
-      try {
-        final boxName = reportsBoxName;
-        if (!Hive.isBoxOpen(boxName)) {
-          await Hive.openBox(boxName);
-        }
-        box = Hive.box(boxName);
-      } catch (e) {
-        debugPrint('Error opening reports box: $e');
-        try {
-          box = Hive.box('reports');
-        } catch (e2) {
-          setState(
-            () => _status = 'Error: No se pudo acceder al almacenamiento',
-          );
-          return;
-        }
-      }
+      final box = await HiveHelper.reportsBox();
       await box.clear();
       bool foundHeader = false;
-      
+      late ReportColumnMapper columnMapper;
+
       final Map<int, Map<String, dynamic>> batchMap = {};
       int currentIndex = 0;
       const int batchSize = 500;
@@ -107,9 +92,6 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
       for (var row in sheet.rows) {
         if (!foundHeader) {
           if (row.isNotEmpty) {
-            final firstCell =
-                row[0]?.value?.toString().trim().toLowerCase() ?? '';
-
             // Extract establishment code searching across all cells in the row
             for (int i = 0; i < row.length; i++) {
               final cellStr =
@@ -119,7 +101,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
                 for (int j = i + 1; j < row.length; j++) {
                   final nextCellStr = row[j]?.value?.toString().trim() ?? '';
                   if (nextCellStr.isNotEmpty) {
-                     final configBox = Hive.box(configBoxName);
+                    final configBox = HiveHelper.box(configBoxName);
                     await configBox.put('establishment_code', nextCellStr);
                     break;
                   }
@@ -128,7 +110,11 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
               }
             }
 
-            if (firstCell.contains('codprod')) {
+            final possibleHeader = ReportColumnMapper.fromHeaders(
+              row.map((cell) => cell?.value?.toString()).toList(),
+            );
+            if (possibleHeader.codProdIndex != null) {
+              columnMapper = possibleHeader;
               foundHeader = true;
             }
           }
@@ -136,29 +122,26 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
         }
         if (row.isEmpty) continue;
 
-        final codProd = row.isNotEmpty
-            ? row[0]?.value?.toString().trim() ?? ''
-            : '';
+        String valueAt(int? index) {
+          if (index == null || index < 0 || index >= row.length) return '';
+          return row[index]?.value?.toString() ?? '';
+        }
+
+        final codProd = valueAt(columnMapper.codProdIndex).trim();
 
         // Filter if CodProd is empty
         if (codProd.isEmpty) continue;
 
-        final nombreProducto = row.length > 1
-            ? row[1]?.value?.toString() ?? ''
-            : '';
-        final fechaActualizacion = row.length > 2
-            ? row[2]?.value?.toString() ?? ''
-            : '';
-        final laboratorio = row.length > 3
-            ? row[3]?.value?.toString() ?? ''
-            : '';
-        final ifa = row.length > 4 ? row[4]?.value?.toString() ?? '' : '';
-        final precioEmpaq = row.length > 5
-            ? double.tryParse(row[5]?.value?.toString() ?? '') ?? 0.0
-            : 0.0;
-        final precioUnit = row.length > 6
-            ? double.tryParse(row[6]?.value?.toString() ?? '') ?? 0.0
-            : 0.0;
+        final nombreProducto = valueAt(columnMapper.nombreProductoIndex);
+        final fechaActualizacion = valueAt(
+          columnMapper.fechaActualizacionIndex,
+        );
+        final laboratorio = valueAt(columnMapper.laboratorioIndex);
+        final ifa = valueAt(columnMapper.ifaIndex);
+        final precioEmpaq =
+            double.tryParse(valueAt(columnMapper.precioEmpaqIndex)) ?? 0.0;
+        final precioUnit =
+            double.tryParse(valueAt(columnMapper.precioUnitIndex)) ?? 0.0;
 
         // Avoid adding completely empty trailing rows
         if (codProd.isEmpty && nombreProducto.isEmpty) continue;
@@ -172,7 +155,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
           'precioEmpaq': precioEmpaq,
           'precioUnit': precioUnit,
         };
-        
+
         currentIndex++;
 
         if (batchMap.length >= batchSize) {
@@ -186,7 +169,7 @@ class _ImportReportScreenState extends State<ImportReportScreen> {
       }
 
       // Guardar ruta del archivo
-      final configBox = Hive.box(configBoxName);
+      final configBox = HiveHelper.box(configBoxName);
       if (filePath != null) {
         await configBox.put('last_report_path', filePath);
       }

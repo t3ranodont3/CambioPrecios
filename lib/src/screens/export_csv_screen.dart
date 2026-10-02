@@ -5,9 +5,9 @@ import 'package:archive/archive.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../models/report_record.dart';
 import '../services/storage_service.dart';
+import '../services/hive_helper.dart';
 
 class ExportCsvScreen extends StatefulWidget {
   const ExportCsvScreen({super.key});
@@ -19,6 +19,7 @@ class ExportCsvScreen extends StatefulWidget {
 class _ExportCsvScreenState extends State<ExportCsvScreen> {
   final TextEditingController _estCodeCtrl = TextEditingController();
   List<ReportRecord> _records = [];
+  String? _loadError;
   bool _isLoading = false;
 
   @override
@@ -35,22 +36,12 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
 
   Future<void> _loadData() async {
     try {
-      Box configBox;
-      if (!Hive.isBoxOpen(configBoxName)) {
-        configBox = await Hive.openBox(configBoxName);
-      } else {
-        configBox = Hive.box(configBoxName);
-      }
+      final configBox = await HiveHelper.configBox();
 
       final savedEst = configBox.get('establishment_code', defaultValue: '');
       _estCodeCtrl.text = savedEst == 'NO ENCONTRADO' ? '' : savedEst;
 
-      Box box;
-      if (!Hive.isBoxOpen(reportsBoxName)) {
-        box = await Hive.openBox(reportsBoxName);
-      } else {
-        box = Hive.box(reportsBoxName);
-      }
+      final box = await HiveHelper.reportsBox();
 
       final recs = <ReportRecord>[];
       for (var item in box.values) {
@@ -69,6 +60,11 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
       }
     } catch (e) {
       debugPrint('Error loading export data: $e');
+      if (mounted) {
+        setState(() {
+          _loadError = 'No se pudo acceder al almacenamiento: $e';
+        });
+      }
     }
   }
 
@@ -91,21 +87,11 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
 
   /// Carga todos los códigos de producto del catálogo actual
   Future<Set<String>> _loadCatalogCodes() async {
-    try {
-      Box productsBox;
-      if (!Hive.isBoxOpen(productsBoxName)) {
-        productsBox = await Hive.openBox(productsBoxName);
-      } else {
-        productsBox = Hive.box(productsBoxName);
-      }
-      return productsBox.values
-          .map((v) => (v is Map ? (v['Cod_Prod'] ?? '').toString().trim() : ''))
-          .where((c) => c.isNotEmpty)
-          .toSet();
-    } catch (e) {
-      debugPrint('Error leyendo catálogo: $e');
-      return {};
-    }
+    final productsBox = await HiveHelper.productsBox();
+    return productsBox.values
+        .map((v) => (v is Map ? (v['Cod_Prod'] ?? '').toString().trim() : ''))
+        .where((c) => c.isNotEmpty)
+        .toSet();
   }
 
   /// Muestra el diálogo de advertencia y retorna true si el usuario confirma exportar
@@ -143,7 +129,11 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.info_outline, color: Colors.blue.shade700, size: 18),
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue.shade700,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
@@ -158,17 +148,26 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
                 if (catalogEmpty)
                   const Text(
                     '⚠️ No se encontró ningún catálogo importado. No se puede verificar la validez de los productos.',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
                   )
                 else if (excluded.isEmpty)
                   Text(
                     '✅ Todos los $validCount productos del reporte figuran en el catálogo actual.',
-                    style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
                   )
                 else ...[
                   Text(
                     '${excluded.length} producto${excluded.length == 1 ? '' : 's'} NO se incluirá${excluded.length == 1 ? '' : 'n'} en el CSV porque no figuran en el catálogo actual:',
-                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -184,17 +183,26 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
                       itemBuilder: (_, i) {
                         final r = excluded[i];
                         return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 r.nombreProducto,
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
                               ),
                               Text(
                                 'Cód: ${r.codProd}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ),
@@ -238,7 +246,7 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
 
     try {
       // 1. Guardar código de establecimiento
-      final configBox = Hive.box(configBoxName);
+      final configBox = HiveHelper.box(configBoxName);
       await configBox.put('establishment_code', _estCodeCtrl.text.trim());
 
       // 2. Cargar códigos del catálogo actual
@@ -278,7 +286,8 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
       // 5. Generar CSV solo con productos válidos
       final csvString = _generateCsvContent(valid);
       final csvBytes = utf8.encode(csvString);
-      final rucGuardado = configBox.get('establishment_ruc', defaultValue: '') as String;
+      final rucGuardado =
+          configBox.get('establishment_ruc', defaultValue: '') as String;
       final codeEff = _estCodeCtrl.text.trim();
       final now = DateTime.now();
       final mes = now.month.toString().padLeft(2, '0');
@@ -297,11 +306,7 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
 
       // 6. Comprimir CSV en ZIP
       final archive = Archive();
-      archive.addFile(ArchiveFile(
-        '$fileName.csv',
-        csvBytes.length,
-        csvBytes,
-      ));
+      archive.addFile(ArchiveFile('$fileName.csv', csvBytes.length, csvBytes));
       final zipBytes = Uint8List.fromList(ZipEncoder().encode(archive)!);
 
       // 7. Guardar CSV
@@ -349,18 +354,22 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
       if (zipOutput != null) saved.add('ZIP');
       if (saved.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Archivos guardados: ${saved.join(' y ')} ($fileName)')),
+          SnackBar(
+            content: Text(
+              'Archivos guardados: ${saved.join(' y ')} ($fileName)',
+            ),
+          ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Exportación cancelada')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Exportación cancelada')));
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al exportar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al exportar: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -396,7 +405,9 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
                           keyboardType: TextInputType.number,
                           onChanged: (val) {
                             setState(() {});
-                            Hive.box(configBoxName).put('establishment_code', val.trim());
+                            HiveHelper.box(
+                              configBoxName,
+                            ).put('establishment_code', val.trim());
                           },
                           decoration: const InputDecoration(
                             hintText: 'Ej. 1234567',
@@ -437,12 +448,28 @@ class _ExportCsvScreenState extends State<ExportCsvScreen> {
             ),
           ),
           const Divider(height: 1),
+          if (_loadError != null)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                _loadError!,
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            ),
           if (_records.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.grey),
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     'Total: ${_records.length} producto${_records.length == 1 ? '' : 's'}',
